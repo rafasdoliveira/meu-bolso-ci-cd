@@ -79,7 +79,6 @@ pipeline {
                                 -Dsonar.projectKey=meu-bolso-api \
                                 -Dsonar.projectName="Meu Bolso API" \
                                 -Dsonar.sources=src \
-                                -Dsonar.tests=src \
                                 -Dsonar.test.inclusions="src/**/*.{spec,test}.ts" \
                                 -Dsonar.exclusions="**/node_modules/**,**/dist/**,**/coverage/**" \
                                 -Dsonar.typescript.lcov.reportPaths=coverage/lcov.info \
