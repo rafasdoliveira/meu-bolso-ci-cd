@@ -205,7 +205,7 @@ pipeline {
 
         stage('8. Push & Tag') {
             // when { branch 'main' }
-            wwhen {
+            when {
                 expression {
                     sh(
                         script: 'git rev-parse --abbrev-ref HEAD',
