@@ -1,0 +1,69 @@
+services:
+  db:
+    image: postgres:15
+    container_name: meu-bolso-db
+    environment:
+      POSTGRES_DB: meu-bolso-db
+      POSTGRES_USER: rafasdoliveira
+      POSTGRES_PASSWORD: postgres
+    ports:
+      - "5432:5432"
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    networks:
+      - meu-bolso-net
+    healthcheck:
+      test: [ "CMD-SHELL", "pg_isready -U rafasdoliveira -d meu-bolso-db" ]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  api:
+    build: .
+    image: rafasdoliveira/meu-bolso-api:prod
+    container_name: meu-bolso-api
+    ports:
+      - "8080:8080"
+    env_file:
+      - .env
+    environment:
+      - DB_HOST=db
+    depends_on:
+      db:
+        condition: service_healthy
+    networks:
+      - meu-bolso-net
+
+  sonarqube:
+    image: sonarqube:lts
+    container_name: sonarqube
+    ports:
+      - "9000:9000"
+    networks:
+      - meu-bolso-net
+
+  jenkins:
+    build:
+      context: ./jenkins
+      dockerfile: Dockerfile
+    image: jenkins-custom
+    container_name: jenkins
+    user: root
+    ports:
+      - "8081:8080"
+      - "50000:50000"
+    volumes:
+      - jenkins_home:/var/jenkins_home
+      - /var/run/docker.sock:/var/run/docker.sock
+    networks:
+      - meu-bolso-net
+    depends_on:
+      - sonarqube
+
+networks:
+  meu-bolso-net:
+    driver: bridge
+
+volumes:
+  pgdata:
+  jenkins_home:
