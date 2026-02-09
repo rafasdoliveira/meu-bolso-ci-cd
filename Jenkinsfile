@@ -64,28 +64,30 @@ pipeline {
         stage('4. SonarQube Scan') {
             parallel {
 
-             stage('4.1 Backend Sonar') {
-  steps {
-    withSonarQubeEnv('SonarQube') {
-      sh '''
-        docker run --rm \
-          --network infra_meu-bolso-ci \
-          -e SONAR_HOST_URL=$SONAR_HOST_URL \
-          -e SONAR_TOKEN=$SONAR_AUTH_TOKEN \
-          -v "$WORKSPACE:/usr/src" \
-          -w /usr/src \
-          sonarsource/sonar-scanner-cli \
-          -Dsonar.projectKey=meu-bolso-api \
-          -Dsonar.projectName="Meu Bolso API" \
-          -Dsonar.projectBaseDir=meu-bolso-api \
-          -Dsonar.sources=src \
-          -Dsonar.test.inclusions="src/**/*.{spec,test}.ts" \
-          -Dsonar.exclusions="**/node_modules/**,**/dist/**,**/coverage/**" \
-          -Dsonar.typescript.lcov.reportPaths=coverage/lcov.info \
-          -Dsonar.typescript.tsconfigPath=tsconfig.sonar.json
-      '''
+         stage('4.1 Backend Sonar') {
+    steps {
+        withSonarQubeEnv('SonarQube') {
+            dir('meu-bolso-api') {  // 1. Enter the directory first
+                sh '''
+                docker run --rm \
+                    --network infra_meu-bolso-ci \
+                    -e SONAR_HOST_URL=$SONAR_HOST_URL \
+                    -e SONAR_TOKEN=$SONAR_AUTH_TOKEN \
+                    -v "$PWD:/usr/src" \
+                    -w /usr/src \
+                    sonarsource/sonar-scanner-cli \
+                    -Dsonar.projectKey=meu-bolso-api \
+                    -Dsonar.projectName="Meu Bolso API" \
+                    -Dsonar.sources=src \
+                    -Dsonar.test.inclusions="src/**/*.{spec,test}.ts" \
+                    -Dsonar.exclusions="**/node_modules/**,**/dist/**,**/coverage/**" \
+                    -Dsonar.typescript.lcov.reportPaths=coverage/lcov.info \
+                    -Dsonar.typescript.tsconfigPath=tsconfig.sonar.json
+                '''
+                // Note: -Dsonar.projectBaseDir was removed because we are already in the folder
+            }
+        }
     }
-  }
 }
 
 
