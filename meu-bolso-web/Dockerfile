@@ -1,30 +1,27 @@
 # Build stage
 FROM node:22-alpine AS build
-
 WORKDIR /app
-
-# Atualiza npm
-RUN npm install -g npm@latest
 
 COPY package*.json ./
 RUN npm ci
-
 COPY . .
 RUN npm run build
 
-# Runtime stage
+# Runtime
 FROM nginx:1.27-alpine
+
+RUN apk update && apk upgrade --no-cache
 
 # Remove config padrão
 RUN rm /etc/nginx/conf.d/default.conf
 
-# Copia config SPA
+# Config SPA
 COPY nginx.conf /etc/nginx/conf.d/default.conf
 
-# Copia build do Vite
+# Build do Vite
 COPY --from=build /app/dist /usr/share/nginx/html
 
-# Segurança básica
+# Usuário não-root
 RUN addgroup -S app && adduser -S app -G app
 USER app
 
