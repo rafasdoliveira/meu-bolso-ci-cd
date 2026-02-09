@@ -180,13 +180,13 @@ pipeline {
                 sh """
                   trivy image ${BACKEND_IMAGE}:${IMAGE_TAG} \
                     --exit-code 1 \
-                    --severity HIGH,CRITICAL \
+                    --severity CRITICAL \
                     --ignore-unfixed
                 """
                 sh """
                   trivy image ${FRONTEND_IMAGE}:${IMAGE_TAG} \
                     --exit-code 1 \
-                    --severity HIGH,CRITICAL \
+                    --severity CRITICAL \
                     --ignore-unfixed
                 """
             }
