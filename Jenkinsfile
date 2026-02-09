@@ -77,7 +77,7 @@ pipeline {
                               -v "$PWD:/usr/src" \
                               sonarsource/sonar-scanner-cli \
                               -Dsonar.projectKey=meu-bolso-api \
-                              -Dsonar.sources=. \
+                              -Dsonar.sources=src \
                               -Dsonar.exclusions=**/node_modules/**,**/coverage/**
                             '''
                         }
@@ -95,7 +95,7 @@ pipeline {
                               -v "$PWD:/usr/src" \
                               sonarsource/sonar-scanner-cli \
                               -Dsonar.projectKey=meu-bolso-web \
-                              -Dsonar.sources=. \
+                              -Dsonar.sources=src \
                               -Dsonar.exclusions=**/node_modules/**,**/coverage/**
                             '''
                         }
