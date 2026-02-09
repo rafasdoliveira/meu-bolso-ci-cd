@@ -89,26 +89,26 @@ pipeline {
             environment {
                 SONAR_TOKEN = credentials('sonar-token')
             }
+
             parallel {
 
                 stage('4.1 Backend Sonar') {
                     steps {
                         dir('meu-bolso-api') {
-                            withSonarQubeEnv('SonarQube') {
-                                sh '''
-                                    sonar-scanner \
-                                      -Dsonar.projectKey=meu-bolso-api \
-                                      -Dsonar.projectName="Meu Bolso API" \
-                                      -Dsonar.sources=src \
-                                      -Dsonar.tests=src \
-                                      -Dsonar.test.inclusions=**/*.spec.ts,**/*.test.ts \
-                                      -Dsonar.exclusions=**/node_modules/**,**/coverage/**,**/*.module.ts \
-                                      -Dsonar.typescript.lcov.reportPaths=coverage/lcov.info
-                                '''
-                            }
-                        }
-                        timeout(time: 10, unit: 'MINUTES') {
-                            waitForQualityGate abortPipeline: true
+                            sh """
+                            docker run --rm \
+                            -e SONAR_HOST_URL=http://meu-bolso-sonarqube:9000 \
+                            -e SONAR_LOGIN=${SONAR_TOKEN} \
+                            -v "\$(pwd):/usr/src" \
+                            sonarsource/sonar-scanner-cli \
+                            -Dsonar.projectKey=meu-bolso-api \
+                            -Dsonar.projectName="Meu Bolso API" \
+                            -Dsonar.sources=src \
+                            -Dsonar.tests=src \
+                            -Dsonar.test.inclusions=**/*.spec.ts,**/*.test.ts \
+                            -Dsonar.exclusions=**/node_modules/**,**/coverage/**,**/*.module.ts \
+                            -Dsonar.typescript.lcov.reportPaths=coverage/lcov.info
+                            """
                         }
                     }
                 }
@@ -116,21 +116,20 @@ pipeline {
                 stage('4.2 Frontend Sonar') {
                     steps {
                         dir('meu-bolso-web') {
-                            withSonarQubeEnv('SonarQube') {
-                                sh '''
-                                    sonar-scanner \
-                                      -Dsonar.projectKey=meu-bolso-web \
-                                      -Dsonar.projectName="Meu Bolso Web" \
-                                      -Dsonar.sources=src \
-                                      -Dsonar.tests=src \
-                                      -Dsonar.test.inclusions=**/*.test.ts,**/*.test.tsx \
-                                      -Dsonar.exclusions=**/node_modules/**,**/coverage/** \
-                                      -Dsonar.javascript.lcov.reportPaths=coverage/lcov.info
-                                '''
-                            }
-                        }
-                        timeout(time: 10, unit: 'MINUTES') {
-                            waitForQualityGate abortPipeline: true
+                            sh """
+                            docker run --rm \
+                            -e SONAR_HOST_URL=http://meu-bolso-sonarqube:9000 \
+                            -e SONAR_LOGIN=${SONAR_TOKEN} \
+                            -v "\$(pwd):/usr/src" \
+                            sonarsource/sonar-scanner-cli \
+                            -Dsonar.projectKey=meu-bolso-web \
+                            -Dsonar.projectName="Meu Bolso Web" \
+                            -Dsonar.sources=src \
+                            -Dsonar.tests=src \
+                            -Dsonar.test.inclusions=**/*.test.ts,**/*.test.tsx \
+                            -Dsonar.exclusions=**/node_modules/**,**/coverage/** \
+                            -Dsonar.javascript.lcov.reportPaths=coverage/lcov.info
+                            """
                         }
                     }
                 }
