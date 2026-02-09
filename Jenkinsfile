@@ -2,13 +2,14 @@ pipeline {
     agent any
 
     environment {
-        REGISTRY = 'localhost:5000'
+        REGISTRY = 'localhost:5001'
         IMAGE_TAG = "v1.0.${BUILD_NUMBER}"
-        BACKEND_IMAGE = "${REGISTRY}/bagly-backend"
-        FRONTEND_IMAGE = "${REGISTRY}/bagly-frontend"
+        BACKEND_IMAGE = "${REGISTRY}/meu-bolso-api"
+        FRONTEND_IMAGE = "${REGISTRY}/meu-bolso-web"
     }
 
     stages {
+
         stage('1. Checkout') {
             steps {
                 checkout scm
@@ -22,7 +23,7 @@ pipeline {
             parallel {
                 stage('2.1 Build Frontend') {
                     steps {
-                        dir('frontend') {
+                        dir('meu-bolso-web') {
                             sh 'npm ci'
                             sh 'npm run build'
                         }
@@ -30,7 +31,7 @@ pipeline {
                 }
                 stage('2.2 Build Backend') {
                     steps {
-                        dir('backend') {
+                        dir('meu-bolso-api') {
                             sh 'npm ci'
                             sh 'npm run build'
                         }
@@ -41,9 +42,10 @@ pipeline {
 
         stage('3. Unit Tests') {
             parallel {
+
                 stage('3.1 Frontend Tests') {
                     steps {
-                        dir('frontend') {
+                        dir('meu-bolso-web') {
                             sh 'npm run test:coverage -- --run'
                         }
                     }
@@ -53,16 +55,17 @@ pipeline {
                                 allowMissing: true,
                                 alwaysLinkToLastBuild: true,
                                 keepAll: true,
-                                reportDir: 'frontend/coverage',
+                                reportDir: 'meu-bolso-web/coverage',
                                 reportFiles: 'index.html',
                                 reportName: 'Frontend Coverage Report'
                             ])
                         }
                     }
                 }
+
                 stage('3.2 Backend Tests') {
                     steps {
-                        dir('backend') {
+                        dir('meu-bolso-api') {
                             sh 'npm run test:coverage -- --run'
                         }
                     }
@@ -72,7 +75,7 @@ pipeline {
                                 allowMissing: true,
                                 alwaysLinkToLastBuild: true,
                                 keepAll: true,
-                                reportDir: 'backend/coverage',
+                                reportDir: 'meu-bolso-api/coverage',
                                 reportFiles: 'index.html',
                                 reportName: 'Backend Coverage Report'
                             ])
@@ -86,20 +89,21 @@ pipeline {
             environment {
                 SONAR_TOKEN = credentials('sonar-token')
             }
-            stages {
+            parallel {
+
                 stage('4.1 Backend Sonar') {
                     steps {
-                        dir('backend') {
+                        dir('meu-bolso-api') {
                             withSonarQubeEnv('SonarQube') {
                                 sh '''
                                     sonar-scanner \
-                                        -Dsonar.projectKey=bagly-backend \
-                                        -Dsonar.projectName="Bagly Backend" \
-                                        -Dsonar.sources=src \
-                                        -Dsonar.tests=src \
-                                        -Dsonar.test.inclusions=**/*.test.ts \
-                                        -Dsonar.exclusions=**/node_modules/**,**/*.test.ts,**/coverage/**,**/prisma/**,**/*.routes.ts,**/config/env.ts,**/config/redis.ts,**/lib/** \
-                                        -Dsonar.typescript.lcov.reportPaths=coverage/lcov.info
+                                      -Dsonar.projectKey=meu-bolso-api \
+                                      -Dsonar.projectName="Meu Bolso API" \
+                                      -Dsonar.sources=src \
+                                      -Dsonar.tests=src \
+                                      -Dsonar.test.inclusions=**/*.spec.ts,**/*.test.ts \
+                                      -Dsonar.exclusions=**/node_modules/**,**/coverage/**,**/*.module.ts \
+                                      -Dsonar.typescript.lcov.reportPaths=coverage/lcov.info
                                 '''
                             }
                         }
@@ -108,20 +112,20 @@ pipeline {
                         }
                     }
                 }
+
                 stage('4.2 Frontend Sonar') {
                     steps {
-                        dir('frontend') {
+                        dir('meu-bolso-web') {
                             withSonarQubeEnv('SonarQube') {
                                 sh '''
                                     sonar-scanner \
-                                        -Dsonar.projectKey=bagly-frontend \
-                                        -Dsonar.projectName="Bagly Frontend" \
-                                        -Dsonar.sources=src \
-                                        -Dsonar.tests=src \
-                                        -Dsonar.test.inclusions=**/*.test.ts,**/*.test.tsx \
-                                        -Dsonar.exclusions=**/node_modules/**,**/*.test.ts,**/*.test.tsx,**/coverage/**,**/components/**,**/pages/** \
-                                        -Dsonar.typescript.lcov.reportPaths=coverage/lcov.info \
-                                        -Dsonar.javascript.lcov.reportPaths=coverage/lcov.info
+                                      -Dsonar.projectKey=meu-bolso-web \
+                                      -Dsonar.projectName="Meu Bolso Web" \
+                                      -Dsonar.sources=src \
+                                      -Dsonar.tests=src \
+                                      -Dsonar.test.inclusions=**/*.test.ts,**/*.test.tsx \
+                                      -Dsonar.exclusions=**/node_modules/**,**/coverage/** \
+                                      -Dsonar.javascript.lcov.reportPaths=coverage/lcov.info
                                 '''
                             }
                         }
@@ -136,30 +140,38 @@ pipeline {
         stage('5. Trivy Repo Scan') {
             steps {
                 sh '''
-                    echo "Scanning repository for vulnerabilities..."
                     trivy fs . \
-                        --exit-code 1 \
-                        --severity HIGH,CRITICAL \
-                        --ignore-unfixed \
-                        --no-progress \
-                        --format table
+                      --exit-code 1 \
+                      --severity HIGH,CRITICAL \
+                      --ignore-unfixed \
+                      --no-progress
                 '''
             }
         }
 
         stage('6. Docker Build') {
             parallel {
+
                 stage('6.1 Docker Frontend') {
                     steps {
-                        dir('frontend') {
-                            sh "docker build --build-arg APP_VERSION=${IMAGE_TAG} -t ${FRONTEND_IMAGE}:${IMAGE_TAG} -t ${FRONTEND_IMAGE}:latest ."
+                        dir('meu-bolso-web') {
+                            sh """
+                              docker build \
+                                -t ${FRONTEND_IMAGE}:${IMAGE_TAG} \
+                                -t ${FRONTEND_IMAGE}:latest .
+                            """
                         }
                     }
                 }
+
                 stage('6.2 Docker Backend') {
                     steps {
-                        dir('backend') {
-                            sh "docker build --build-arg APP_VERSION=${IMAGE_TAG} -t ${BACKEND_IMAGE}:${IMAGE_TAG} -t ${BACKEND_IMAGE}:latest ."
+                        dir('meu-bolso-api') {
+                            sh """
+                              docker build \
+                                -t ${BACKEND_IMAGE}:${IMAGE_TAG} \
+                                -t ${BACKEND_IMAGE}:latest .
+                            """
                         }
                     }
                 }
@@ -169,45 +181,38 @@ pipeline {
         stage('7. Trivy Image Scan') {
             steps {
                 sh """
-                    echo "Scanning backend image for vulnerabilities..."
-                    trivy image \
-                        --exit-code 1 \
-                        --severity HIGH,CRITICAL \
-                        --ignore-unfixed \
-                        --no-progress \
-                        --format table \
-                        ${BACKEND_IMAGE}:${IMAGE_TAG}
+                  trivy image ${BACKEND_IMAGE}:${IMAGE_TAG} \
+                    --exit-code 1 \
+                    --severity HIGH,CRITICAL \
+                    --ignore-unfixed
                 """
+
                 sh """
-                    echo "Scanning frontend image for vulnerabilities..."
-                    trivy image \
-                        --exit-code 1 \
-                        --severity HIGH,CRITICAL \
-                        --ignore-unfixed \
-                        --no-progress \
-                        --format table \
-                        ${FRONTEND_IMAGE}:${IMAGE_TAG}
+                  trivy image ${FRONTEND_IMAGE}:${IMAGE_TAG} \
+                    --exit-code 1 \
+                    --severity HIGH,CRITICAL \
+                    --ignore-unfixed
                 """
             }
         }
 
         stage('8. Push & Tag') {
             when {
-                expression {
-                    return env.GIT_BRANCH == 'origin/main' || env.GIT_BRANCH == 'main'
-                }
+                branch 'main'
             }
             stages {
+
                 stage('8.1 Push to Registry') {
                     steps {
                         sh """
-                            docker push ${FRONTEND_IMAGE}:${IMAGE_TAG}
-                            docker push ${FRONTEND_IMAGE}:latest
-                            docker push ${BACKEND_IMAGE}:${IMAGE_TAG}
-                            docker push ${BACKEND_IMAGE}:latest
+                          docker push ${BACKEND_IMAGE}:${IMAGE_TAG}
+                          docker push ${BACKEND_IMAGE}:latest
+                          docker push ${FRONTEND_IMAGE}:${IMAGE_TAG}
+                          docker push ${FRONTEND_IMAGE}:latest
                         """
                     }
                 }
+
                 stage('8.2 Create Git Tag') {
                     steps {
                         withCredentials([usernamePassword(
@@ -215,12 +220,12 @@ pipeline {
                             usernameVariable: 'GIT_USER',
                             passwordVariable: 'GIT_TOKEN'
                         )]) {
-                            sh '''
-                                git config user.email "jenkins@bagly.com.br"
-                                git config user.name "Jenkins CI"
-                                git tag -a ${IMAGE_TAG} -m "Release ${IMAGE_TAG} - Build #${BUILD_NUMBER}"
-                                git push https://${GIT_USER}:${GIT_TOKEN}@github.com/${GIT_USER}/bagly-cicd.git ${IMAGE_TAG}
-                            '''
+                            sh """
+                              git config user.email "jenkins@meubolso.dev"
+                              git config user.name "Jenkins CI"
+                              git tag -a ${IMAGE_TAG} -m "Release ${IMAGE_TAG}"
+                              git push https://${GIT_USER}:${GIT_TOKEN}@github.com/${GIT_USER}/MeuBolsoCICD.git ${IMAGE_TAG}
+                            """
                         }
                     }
                 }
@@ -230,17 +235,15 @@ pipeline {
 
     post {
         always {
-            sh '''
-                docker image prune -f || true
-            '''
+            sh 'docker image prune -f || true'
             cleanWs()
         }
         success {
             echo "Pipeline concluído com sucesso!"
-            echo "Imagens geradas: ${FRONTEND_IMAGE}:${IMAGE_TAG}, ${BACKEND_IMAGE}:${IMAGE_TAG}"
+            echo "Imagens: ${FRONTEND_IMAGE}:${IMAGE_TAG}, ${BACKEND_IMAGE}:${IMAGE_TAG}"
         }
         failure {
-            echo "Pipeline falhou! Verifique os logs acima."
+            echo "Pipeline falhou — verifique os logs."
         }
     }
 }
