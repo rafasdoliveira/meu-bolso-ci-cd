@@ -192,8 +192,27 @@ pipeline {
             }
         }
 
+        stage('DEBUG Branch') {
+            steps {
+                sh '''
+                echo "BRANCH_NAME=$BRANCH_NAME"
+                echo "GIT_BRANCH=$GIT_BRANCH"
+                git branch
+                git rev-parse --abbrev-ref HEAD
+                '''
+            }
+        }
+
         stage('8. Push & Tag') {
-            when { branch 'main' }
+            // when { branch 'main' }
+            wwhen {
+                expression {
+                    sh(
+                        script: 'git rev-parse --abbrev-ref HEAD',
+                        returnStdout: true
+                    ).trim() == 'main'
+                }
+            }
 
             stages {
 
