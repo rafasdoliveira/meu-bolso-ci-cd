@@ -27,6 +27,7 @@ import { SourcesModule } from './sources/sources.module';
         password: configService.get<string>('DB_PASSWORD'),
         database: configService.get<string>('DB_NAME'),
         entities: [Income, PaymentTypes, IncomeStatus, IncomeSources],
+        synchronize: false,
       }),
     }),
     IncomesModule,
