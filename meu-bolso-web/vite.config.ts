@@ -24,7 +24,10 @@ export default defineConfig({
         'dist/',
         '**/*.config.*',
         '**/*.d.ts',
-        'src/shared/api/http.ts'
+        'src/shared/api/http.ts',
+        'src/modules/cards',
+        'src/modules/expenses',
+        'src/modules/goals',
       ]
     }
   }
