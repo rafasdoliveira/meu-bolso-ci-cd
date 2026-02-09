@@ -105,9 +105,7 @@ pipeline {
                             -Dsonar.projectKey=meu-bolso-api \
                             -Dsonar.projectName="Meu Bolso API" \
                             -Dsonar.sources=src \
-                            -Dsonar.tests=src \
-                            "-Dsonar.test.inclusions=**/*.spec.ts,**/*.test.ts" \
-                            "-Dsonar.exclusions=**/node_modules/**,**/coverage/**" \
+                            -Dsonar.exclusions=**/node_modules/**,**/coverage/** \
                             -Dsonar.typescript.lcov.reportPaths=coverage/lcov.info
                             '''
                         }
@@ -127,9 +125,7 @@ pipeline {
                             -Dsonar.projectKey=meu-bolso-web \
                             -Dsonar.projectName="Meu Bolso Web" \
                             -Dsonar.sources=src \
-                            -Dsonar.tests=src \
-                            "-Dsonar.test.inclusions=**/*.test.ts,**/*.test.tsx" \
-                            "-Dsonar.exclusions=**/node_modules/**,**/coverage/**" \
+                            -Dsonar.exclusions=**/node_modules/**,**/coverage/** \
                             -Dsonar.javascript.lcov.reportPaths=coverage/lcov.info
                             '''
                         }
