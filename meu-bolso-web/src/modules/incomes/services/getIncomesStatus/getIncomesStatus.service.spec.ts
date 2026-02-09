@@ -18,7 +18,7 @@ describe('GetIncomesStatusService', () => {
 
   it('deve buscar o status de incomes e retornar corretamente o payload', async () => {
     const incomesStatus: GetIncomesStatusOutputDto = {
-      status: 'ACTIVE'
+      status: 'success'
     }
 
     const apiResponse: ApiResponse<GetIncomesStatusOutputDto> = {
