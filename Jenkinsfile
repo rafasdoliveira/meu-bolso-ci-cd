@@ -78,9 +78,9 @@ pipeline {
                                 sonarsource/sonar-scanner-cli \
                                 -Dsonar.projectKey=meu-bolso-api \
                                 -Dsonar.projectName="Meu Bolso API" \
-                                -Dsonar.sources=src \
+                                -Dsonar.sources=. \
                                 -Dsonar.test.inclusions="src/**/*.{spec,test}.ts" \
-                                -Dsonar.exclusions="**/node_modules/**,**/dist/**,**/coverage/**" \
+                                -Dsonar.exclusions="**/*.spec.ts,**/*.test.ts,**/node_modules/**,**/dist/**,**/coverage/**" \
                                 -Dsonar.typescript.lcov.reportPaths=coverage/lcov.info \
                                 -Dsonar.typescript.tsconfigPath=tsconfig.sonar.json
                             '''
