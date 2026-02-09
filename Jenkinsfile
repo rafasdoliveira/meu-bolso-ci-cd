@@ -6,6 +6,8 @@ pipeline {
         IMAGE_TAG = "v1.0.${BUILD_NUMBER}"
         BACKEND_IMAGE = "${REGISTRY}/meu-bolso-api"
         FRONTEND_IMAGE = "${REGISTRY}/meu-bolso-web"
+        SONAR_HOST = 'http://meu-bolso-sonarqube:9000'
+        SONAR_NETWORK = 'infra_meu-bolso-ci'
     }
 
     stages {
@@ -53,11 +55,10 @@ pipeline {
                         always {
                             publishHTML(target: [
                                 allowMissing: true,
-                                alwaysLinkToLastBuild: true,
                                 keepAll: true,
-                                reportDir: 'meu-bolso-web/coverage',
+                                reportDir: 'coverage',
                                 reportFiles: 'index.html',
-                                reportName: 'Frontend Coverage Report'
+                                reportName: 'Frontend Coverage'
                             ])
                         }
                     }
@@ -73,11 +74,10 @@ pipeline {
                         always {
                             publishHTML(target: [
                                 allowMissing: true,
-                                alwaysLinkToLastBuild: true,
                                 keepAll: true,
-                                reportDir: 'meu-bolso-api/coverage',
+                                reportDir: 'coverage',
                                 reportFiles: 'index.html',
-                                reportName: 'Backend Coverage Report'
+                                reportName: 'Backend Coverage'
                             ])
                         }
                     }
@@ -95,20 +95,21 @@ pipeline {
                 stage('4.1 Backend Sonar') {
                     steps {
                         dir('meu-bolso-api') {
-                            sh """
+                            sh '''
                             docker run --rm \
-                            -e SONAR_HOST_URL=http://meu-bolso-sonarqube:9000 \
-                            -e SONAR_LOGIN=${SONAR_TOKEN} \
-                            -v "\$(pwd):/usr/src" \
-                            sonarsource/sonar-scanner-cli \
-                            -Dsonar.projectKey=meu-bolso-api \
-                            -Dsonar.projectName="Meu Bolso API" \
-                            -Dsonar.sources=src \
-                            -Dsonar.tests=src \
-                            -Dsonar.test.inclusions=**/*.spec.ts,**/*.test.ts \
-                            -Dsonar.exclusions=**/node_modules/**,**/coverage/**,**/*.module.ts \
-                            -Dsonar.typescript.lcov.reportPaths=coverage/lcov.info
-                            """
+                              --network infra_meu-bolso-ci \
+                              -e SONAR_HOST_URL=${SONAR_HOST} \
+                              -e SONAR_LOGIN=${SONAR_TOKEN} \
+                              -v "$PWD:/usr/src" \
+                              sonarsource/sonar-scanner-cli \
+                              -Dsonar.projectKey=meu-bolso-api \
+                              -Dsonar.projectName="Meu Bolso API" \
+                              -Dsonar.sources=src \
+                              -Dsonar.tests=src \
+                              -Dsonar.test.inclusions=**/*.spec.ts,**/*.test.ts \
+                              -Dsonar.exclusions=**/node_modules/**,**/coverage/** \
+                              -Dsonar.typescript.lcov.reportPaths=coverage/lcov.info
+                            '''
                         }
                     }
                 }
@@ -116,20 +117,21 @@ pipeline {
                 stage('4.2 Frontend Sonar') {
                     steps {
                         dir('meu-bolso-web') {
-                            sh """
+                            sh '''
                             docker run --rm \
-                            -e SONAR_HOST_URL=http://meu-bolso-sonarqube:9000 \
-                            -e SONAR_LOGIN=${SONAR_TOKEN} \
-                            -v "\$(pwd):/usr/src" \
-                            sonarsource/sonar-scanner-cli \
-                            -Dsonar.projectKey=meu-bolso-web \
-                            -Dsonar.projectName="Meu Bolso Web" \
-                            -Dsonar.sources=src \
-                            -Dsonar.tests=src \
-                            -Dsonar.test.inclusions=**/*.test.ts,**/*.test.tsx \
-                            -Dsonar.exclusions=**/node_modules/**,**/coverage/** \
-                            -Dsonar.javascript.lcov.reportPaths=coverage/lcov.info
-                            """
+                              --network infra_meu-bolso-ci \
+                              -e SONAR_HOST_URL=${SONAR_HOST} \
+                              -e SONAR_LOGIN=${SONAR_TOKEN} \
+                              -v "$PWD:/usr/src" \
+                              sonarsource/sonar-scanner-cli \
+                              -Dsonar.projectKey=meu-bolso-web \
+                              -Dsonar.projectName="Meu Bolso Web" \
+                              -Dsonar.sources=src \
+                              -Dsonar.tests=src \
+                              -Dsonar.test.inclusions=**/*.test.ts,**/*.test.tsx \
+                              -Dsonar.exclusions=**/node_modules/**,**/coverage/** \
+                              -Dsonar.javascript.lcov.reportPaths=coverage/lcov.info
+                            '''
                         }
                     }
                 }
@@ -139,11 +141,11 @@ pipeline {
         stage('5. Trivy Repo Scan') {
             steps {
                 sh '''
-                    trivy fs . \
-                      --exit-code 1 \
-                      --severity HIGH,CRITICAL \
-                      --ignore-unfixed \
-                      --no-progress
+                  trivy fs . \
+                    --exit-code 1 \
+                    --severity HIGH,CRITICAL \
+                    --ignore-unfixed \
+                    --no-progress
                 '''
             }
         }
@@ -151,7 +153,7 @@ pipeline {
         stage('6. Docker Build') {
             parallel {
 
-                stage('6.1 Docker Frontend') {
+                stage('6.1 Frontend Image') {
                     steps {
                         dir('meu-bolso-web') {
                             sh """
@@ -163,7 +165,7 @@ pipeline {
                     }
                 }
 
-                stage('6.2 Docker Backend') {
+                stage('6.2 Backend Image') {
                     steps {
                         dir('meu-bolso-api') {
                             sh """
@@ -185,7 +187,6 @@ pipeline {
                     --severity HIGH,CRITICAL \
                     --ignore-unfixed
                 """
-
                 sh """
                   trivy image ${FRONTEND_IMAGE}:${IMAGE_TAG} \
                     --exit-code 1 \
@@ -196,12 +197,11 @@ pipeline {
         }
 
         stage('8. Push & Tag') {
-            when {
-                branch 'main'
-            }
+            when { branch 'main' }
+
             stages {
 
-                stage('8.1 Push to Registry') {
+                stage('8.1 Push Images') {
                     steps {
                         sh """
                           docker push ${BACKEND_IMAGE}:${IMAGE_TAG}
@@ -212,7 +212,7 @@ pipeline {
                     }
                 }
 
-                stage('8.2 Create Git Tag') {
+                stage('8.2 Git Tag') {
                     steps {
                         withCredentials([usernamePassword(
                             credentialsId: 'github-credentials',
@@ -238,11 +238,10 @@ pipeline {
             cleanWs()
         }
         success {
-            echo "Pipeline concluído com sucesso!"
-            echo "Imagens: ${FRONTEND_IMAGE}:${IMAGE_TAG}, ${BACKEND_IMAGE}:${IMAGE_TAG}"
+            echo "Pipeline concluído com sucesso"
         }
         failure {
-            echo "Pipeline falhou — verifique os logs."
+            echo "Pipeline falhou — verifique os logs"
         }
     }
 }
