@@ -97,18 +97,18 @@ pipeline {
                         dir('meu-bolso-api') {
                             sh '''
                             docker run --rm \
-                              --network infra_meu-bolso-ci \
-                              -e SONAR_HOST_URL=${SONAR_HOST} \
-                              -e SONAR_LOGIN=${SONAR_TOKEN} \
-                              -v "$PWD:/usr/src" \
-                              sonarsource/sonar-scanner-cli \
-                              -Dsonar.projectKey=meu-bolso-api \
-                              -Dsonar.projectName="Meu Bolso API" \
-                              -Dsonar.sources=src \
-                              -Dsonar.tests=src \
-                              -Dsonar.test.inclusions=**/*.spec.ts,**/*.test.ts \
-                              -Dsonar.exclusions=**/node_modules/**,**/coverage/** \
-                              -Dsonar.typescript.lcov.reportPaths=coverage/lcov.info
+                            --network infra_meu-bolso-ci \
+                            -e SONAR_HOST_URL=${SONAR_HOST} \
+                            -e SONAR_TOKEN=${SONAR_TOKEN} \
+                            -v "$PWD:/usr/src" \
+                            sonarsource/sonar-scanner-cli \
+                            -Dsonar.projectKey=meu-bolso-api \
+                            -Dsonar.projectName="Meu Bolso API" \
+                            -Dsonar.sources=src \
+                            -Dsonar.tests=src \
+                            "-Dsonar.test.inclusions=**/*.spec.ts,**/*.test.ts" \
+                            "-Dsonar.exclusions=**/node_modules/**,**/coverage/**" \
+                            -Dsonar.typescript.lcov.reportPaths=coverage/lcov.info
                             '''
                         }
                     }
@@ -119,18 +119,18 @@ pipeline {
                         dir('meu-bolso-web') {
                             sh '''
                             docker run --rm \
-                              --network infra_meu-bolso-ci \
-                              -e SONAR_HOST_URL=${SONAR_HOST} \
-                              -e SONAR_LOGIN=${SONAR_TOKEN} \
-                              -v "$PWD:/usr/src" \
-                              sonarsource/sonar-scanner-cli \
-                              -Dsonar.projectKey=meu-bolso-web \
-                              -Dsonar.projectName="Meu Bolso Web" \
-                              -Dsonar.sources=src \
-                              -Dsonar.tests=src \
-                              -Dsonar.test.inclusions=**/*.test.ts,**/*.test.tsx \
-                              -Dsonar.exclusions=**/node_modules/**,**/coverage/** \
-                              -Dsonar.javascript.lcov.reportPaths=coverage/lcov.info
+                            --network infra_meu-bolso-ci \
+                            -e SONAR_HOST_URL=${SONAR_HOST} \
+                            -e SONAR_TOKEN=${SONAR_TOKEN} \
+                            -v "$PWD:/usr/src" \
+                            sonarsource/sonar-scanner-cli \
+                            -Dsonar.projectKey=meu-bolso-web \
+                            -Dsonar.projectName="Meu Bolso Web" \
+                            -Dsonar.sources=src \
+                            -Dsonar.tests=src \
+                            "-Dsonar.test.inclusions=**/*.test.ts,**/*.test.tsx" \
+                            "-Dsonar.exclusions=**/node_modules/**,**/coverage/**" \
+                            -Dsonar.javascript.lcov.reportPaths=coverage/lcov.info
                             '''
                         }
                     }
