@@ -62,53 +62,52 @@ pipeline {
         }
 
         stage('4. SonarQube Scan') {
-            environment {
-                SONAR_TOKEN = credentials('sonar-token')
-            }
-            parallel {
+            withCredentials([string(credentialsId: 'sonar-token', variable: 'SONAR_TOKEN')]) {
+                parallel {
+
                 stage('4.1 Backend Sonar') {
-                    steps {
-                        dir('meu-bolso-api') {
-                            sh '''
-                              docker run --rm \
-                            --network infra_meu-bolso-ci \
-                            -e SONAR_HOST_URL=${SONAR_HOST} \
-                            -e SONAR_TOKEN=${SONAR_TOKEN} \
-                            -v "$PWD:/usr/src" \
-                            -w /usr/src \
-                            sonarsource/sonar-scanner-cli \
-                            -Dsonar.language=ts \
-                            -Dsonar.projectKey=meu-bolso-api \
-                            -Dsonar.projectName="Meu Bolso API" \
-                            -Dsonar.sources=src \
-                            -Dsonar.exclusions=**/node_modules/**,**/dist/**,**/coverage/** \
-                            -Dsonar.test.inclusions=**/*.spec.ts,**/*.test.ts \
-                            -Dsonar.typescript.lcov.reportPaths=coverage/lcov.info \
-                            -Dsonar.typescript.tsconfigPath=tsconfig.sonar.json
-                            '''
-                        }
+                    dir('meu-bolso-api') {
+                    sh '''
+                        docker run --rm \
+                        --network infra_meu-bolso-ci \
+                        -e SONAR_HOST_URL=http://meu-bolso-sonarqube:9000 \
+                        -e SONAR_TOKEN=$SONAR_TOKEN \
+                        -v "$PWD:/usr/src" \
+                        -w /usr/src \
+                        sonarsource/sonar-scanner-cli \
+                        -Dsonar.projectKey=meu-bolso-api \
+                        -Dsonar.projectName="Meu Bolso API" \
+                        -Dsonar.sources=. \
+                        -Dsonar.tests=. \
+                        -Dsonar.exclusions=**/node_modules/**,**/dist/**,**/coverage/** \
+                        -Dsonar.test.inclusions=**/*.spec.ts,**/*.test.ts \
+                        -Dsonar.typescript.lcov.reportPaths=coverage/lcov.info \
+                        -Dsonar.typescript.tsconfigPath=tsconfig.sonar.json
+                    '''
                     }
                 }
 
                 stage('4.2 Frontend Sonar') {
-                    steps {
-                        dir('meu-bolso-web') {
-                            sh '''
-                              docker run --rm \
-                                --network infra_meu-bolso-ci \
-                                -e SONAR_HOST_URL=${SONAR_HOST} \
-                                -e SONAR_TOKEN=${SONAR_TOKEN} \
-                                -v "$PWD:/usr/src" \
-                                -w /usr/src \
-                                sonarsource/sonar-scanner-cli \
-                                -Dsonar.projectKey=meu-bolso-web \
-                                -Dsonar.projectName="Meu Bolso Web" \
-                                -Dsonar.sources=src \
-                                -Dsonar.exclusions=**/node_modules/**,**/dist/**,**/coverage/** \
-                                -Dsonar.javascript.lcov.reportPaths=coverage/lcov.info
-                            '''
-                        }
+                    dir('meu-bolso-web') {
+                    sh '''
+                        docker run --rm \
+                        --network infra_meu-bolso-ci \
+                        -e SONAR_HOST_URL=http://meu-bolso-sonarqube:9000 \
+                        -e SONAR_TOKEN=$SONAR_TOKEN \
+                        -v "$PWD:/usr/src" \
+                        -w /usr/src \
+                        sonarsource/sonar-scanner-cli \
+                        -Dsonar.projectKey=meu-bolso-web \
+                        -Dsonar.projectName="Meu Bolso Web" \
+                        -Dsonar.sources=. \
+                        -Dsonar.tests=. \
+                        -Dsonar.exclusions=**/node_modules/**,**/dist/**,**/coverage/** \
+                        -Dsonar.test.inclusions=**/*.spec.ts,**/*.test.ts \
+                        -Dsonar.javascript.lcov.reportPaths=coverage/lcov.info
+                    '''
                     }
+                }
+
                 }
             }
         }
