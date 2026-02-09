@@ -104,7 +104,7 @@ pipeline {
                             sonarsource/sonar-scanner-cli \
                             -Dsonar.projectKey=meu-bolso-api \
                             -Dsonar.projectName="Meu Bolso API" \
-                            -Dsonar.sources=src \
+                            -Dsonar.sources=. \
                             -Dsonar.exclusions=**/node_modules/**,**/coverage/** \
                             -Dsonar.typescript.lcov.reportPaths=coverage/lcov.info
                             '''
@@ -124,7 +124,7 @@ pipeline {
                             sonarsource/sonar-scanner-cli \
                             -Dsonar.projectKey=meu-bolso-web \
                             -Dsonar.projectName="Meu Bolso Web" \
-                            -Dsonar.sources=src \
+                            -Dsonar.sources=. \
                             -Dsonar.exclusions=**/node_modules/**,**/coverage/** \
                             -Dsonar.javascript.lcov.reportPaths=coverage/lcov.info
                             '''
