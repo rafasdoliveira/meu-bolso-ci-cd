@@ -63,66 +63,71 @@ pipeline {
 
         stage('4. SonarQube Scan') {
             parallel {
+                stage('4.1 Backend Sonar') {
+                    steps {
+                        withSonarQubeEnv('SonarQube') {
+                            dir('meu-bolso-api') {
+                                script {
+                                    // 1. Cria um Dockerfile temporário para "injetar" o código na imagem
+                                    sh 'echo "FROM sonarsource/sonar-scanner-cli:latest" > Dockerfile.sonar'
+                                    sh 'echo "COPY . /usr/src" >> Dockerfile.sonar'
 
-         stage('4.1 Backend Sonar') {
-    steps {
-        withSonarQubeEnv('SonarQube') {
-            dir('meu-bolso-api') {
-                // 1. Create a temporary Dockerfile to copy source code IN
-                //    This bypasses the volume mount failure.
-                sh '''
-                    printf "FROM sonarsource/sonar-scanner-cli\nCOPY . /usr/src" > Dockerfile.sonar
-                '''
+                                    // 2. Constrói a imagem (Forçamos linux/amd64 para evitar problemas de compatibilidade no scan)
+                                    sh "docker build --platform linux/amd64 -f Dockerfile.sonar -t temp-sonar-backend:${BUILD_NUMBER} ."
 
-                // 2. Build the temporary image containing your code
-                sh 'docker build --platform linux/amd64 -f Dockerfile.sonar -t temp-sonar-backend:${BUILD_ID} .'
+                                    // 3. Roda o scanner usando a imagem que ACABAMOS de criar (sem -v)
+                                    sh """
+                                        docker run --rm \
+                                            --network infra_meu-bolso-ci \
+                                            -e SONAR_HOST_URL=\$SONAR_HOST_URL \
+                                            -e SONAR_TOKEN=\$SONAR_AUTH_TOKEN \
+                                            temp-sonar-backend:${BUILD_NUMBER} \
+                                            -Dsonar.projectKey=meu-bolso-api \
+                                            -Dsonar.projectName='Meu Bolso API' \
+                                            -Dsonar.sources=src \
+                                            -Dsonar.test.inclusions='src/**/*.{spec,test}.ts' \
+                                            -Dsonar.exclusions='**/node_modules/**,**/dist/**,**/coverage/**' \
+                                            -Dsonar.typescript.lcov.reportPaths=coverage/lcov.info \
+                                            -Dsonar.typescript.tsconfigPath=tsconfig.sonar.json
+                                    """
 
-                // 3. Run the scan using the temporary image
-                //    Note: Removed -v and -w, added the image name
-                sh '''
-                    docker run --rm \
-                        --network infra_meu-bolso-ci \
-                        -e SONAR_HOST_URL=$SONAR_HOST_URL \
-                        -e SONAR_TOKEN=$SONAR_AUTH_TOKEN \
-                        temp-sonar-backend:${BUILD_ID} \
-                        -Dsonar.projectKey=meu-bolso-api \
-                        -Dsonar.projectName="Meu Bolso API" \
-                        -Dsonar.sources=src \
-                        -Dsonar.test.inclusions="src/**/*.{spec,test}.ts" \
-                        -Dsonar.exclusions="**/node_modules/**,**/dist/**,**/coverage/**" \
-                        -Dsonar.typescript.lcov.reportPaths=coverage/lcov.info \
-                        -Dsonar.typescript.tsconfigPath=tsconfig.sonar.json
-                '''
-
-                // 4. Cleanup the temporary image to save space
-                sh "docker rmi temp-sonar-backend:${BUILD_ID}"
-            }
-        }
-    }
-}
-
+                                    // 4. Limpa a imagem temporária
+                                    sh "docker rmi temp-sonar-backend:${BUILD_NUMBER}"
+                                }
+                            }
+                        }
+                    }
+                }
 
                 stage('4.2 Frontend Sonar') {
                     steps {
                         withSonarQubeEnv('SonarQube') {
                             dir('meu-bolso-web') {
-                                sh '''
-                                docker run --rm \
-                                    --network infra_meu-bolso-ci \
-                                    -e SONAR_HOST_URL=$SONAR_HOST_URL \
-                                    -e SONAR_TOKEN=$SONAR_AUTH_TOKEN \
-                                    -v "$PWD:/usr/src" \
-                                    -w /usr/src \
-                                    sonarsource/sonar-scanner-cli \
-                                    -Dsonar.projectKey=meu-bolso-web \
-                                    -Dsonar.projectName="Meu Bolso Web" \
-                                    -Dsonar.sources=. \
-                                    -Dsonar.tests=. \
-                                    -Dsonar.exclusions=**/node_modules/**,**/dist/**,**/coverage/** \
-                                    -Dsonar.test.inclusions=**/*.spec.ts,**/*.test.ts \
-                                    -Dsonar.javascript.lcov.reportPaths=coverage/lcov.info \
-                                    -Dsonar.typescript.tsconfigPath=tsconfig.sonar.json
-                                '''
+                                script {
+                                    // Mesma estratégia: Cria Dockerfile -> Build -> Run -> Limpa
+                                    sh 'echo "FROM sonarsource/sonar-scanner-cli:latest" > Dockerfile.sonar'
+                                    sh 'echo "COPY . /usr/src" >> Dockerfile.sonar'
+
+                                    sh "docker build --platform linux/amd64 -f Dockerfile.sonar -t temp-sonar-frontend:${BUILD_NUMBER} ."
+
+                                    sh """
+                                        docker run --rm \
+                                            --network infra_meu-bolso-ci \
+                                            -e SONAR_HOST_URL=\$SONAR_HOST_URL \
+                                            -e SONAR_TOKEN=\$SONAR_AUTH_TOKEN \
+                                            temp-sonar-frontend:${BUILD_NUMBER} \
+                                            -Dsonar.projectKey=meu-bolso-web \
+                                            -Dsonar.projectName='Meu Bolso Web' \
+                                            -Dsonar.sources=. \
+                                            -Dsonar.tests=. \
+                                            -Dsonar.exclusions='**/node_modules/**,**/dist/**,**/coverage/**' \
+                                            -Dsonar.test.inclusions='**/*.spec.ts,**/*.test.ts' \
+                                            -Dsonar.javascript.lcov.reportPaths=coverage/lcov.info \
+                                            -Dsonar.typescript.tsconfigPath=tsconfig.sonar.json
+                                    """
+
+                                    sh "docker rmi temp-sonar-frontend:${BUILD_NUMBER}"
+                                }
                             }
                         }
                     }
