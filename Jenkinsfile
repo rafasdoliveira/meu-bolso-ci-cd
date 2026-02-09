@@ -77,6 +77,7 @@ pipeline {
                             -v "$PWD:/usr/src" \
                             -w /usr/src \
                             sonarsource/sonar-scanner-cli \
+                            -Dsonar.language=ts \
                             -Dsonar.projectKey=meu-bolso-api \
                             -Dsonar.projectName="Meu Bolso API" \
                             -Dsonar.sources=src \
