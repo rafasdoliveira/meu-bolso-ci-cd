@@ -46,7 +46,7 @@ pipeline {
                 stage('3.1 Frontend Tests') {
                     steps {
                         dir('meu-bolso-web') {
-                            sh 'npm run test:coverage -- --run'
+                            sh 'npm run test:cov'
                         }
                     }
                     post {
@@ -66,7 +66,7 @@ pipeline {
                 stage('3.2 Backend Tests') {
                     steps {
                         dir('meu-bolso-api') {
-                            sh 'npm run test:coverage -- --run'
+                            sh 'npm run test:cov'
                         }
                     }
                     post {
