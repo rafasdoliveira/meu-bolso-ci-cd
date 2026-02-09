@@ -11,7 +11,6 @@ pipeline {
     }
 
     stages {
-
         stage('1. Checkout') {
             steps {
                 checkout scm
@@ -62,63 +61,65 @@ pipeline {
         }
 
         stage('4. SonarQube Scan') {
-            stage('4.1 Backend Sonar') {
-                steps {
-                    withSonarQubeEnv('SonarQube') {
-                        dir('meu-bolso-api') {
-                            script {
-                                // 1. Cria um Dockerfile temporário para "injetar" o código na imagem
-                                sh 'echo "FROM sonarsource/sonar-scanner-cli:latest" > Dockerfile.sonar'
-                                sh 'echo "COPY . /usr/src" >> Dockerfile.sonar'
-                                // 2. Constrói a imagem (Forçamos linux/amd64 para evitar problemas de compatibilidade no scan)
-                                sh "docker build --platform linux/amd64 -f Dockerfile.sonar -t temp-sonar-backend:${BUILD_NUMBER} ."
-                                // 3. Roda o scanner usando a imagem que ACABAMOS de criar (sem -v)
-                                sh """
-                                    docker run --rm \
-                                        --network infra_meu-bolso-ci \
-                                        -e SONAR_HOST_URL=\$SONAR_HOST_URL \
-                                        -e SONAR_TOKEN=\$SONAR_AUTH_TOKEN \
-                                        temp-sonar-backend:${BUILD_NUMBER} \
-                                        -Dsonar.projectKey=meu-bolso-api \
-                                        -Dsonar.projectName='Meu Bolso API' \
-                                        -Dsonar.sources=src \
-                                        -Dsonar.test.inclusions='src/**/*.{spec,test}.ts' \
-                                        -Dsonar.exclusions='**/node_modules/**,**/dist/**,**/coverage/**' \
-                                        -Dsonar.typescript.lcov.reportPaths=coverage/lcov.info \
-                                        -Dsonar.typescript.tsconfigPath=tsconfig.sonar.json
-                                """
-                                // 4. Limpa a imagem temporária
-                                sh "docker rmi temp-sonar-backend:${BUILD_NUMBER}"
+            // Removido parallel para evitar estouro de memória no Mac M4
+            stages {
+                stage('4.1 Backend Sonar') {
+                    steps {
+                        withSonarQubeEnv('SonarQube') {
+                            dir('meu-bolso-api') {
+                                script {
+                                    sh 'echo "FROM sonarsource/sonar-scanner-cli:latest" > Dockerfile.sonar'
+                                    sh 'echo "COPY . /usr/src" >> Dockerfile.sonar'
+                                    sh "docker build --platform linux/amd64 -f Dockerfile.sonar -t temp-sonar-backend:${BUILD_NUMBER} ."
+                                    
+                                    sh """
+                                        docker run --rm \
+                                            --network infra_meu-bolso-ci \
+                                            -e SONAR_HOST_URL=\$SONAR_HOST_URL \
+                                            -e SONAR_TOKEN=\$SONAR_AUTH_TOKEN \
+                                            -e NODE_OPTIONS="--max-old-space-size=4096" \
+                                            temp-sonar-backend:${BUILD_NUMBER} \
+                                            -Dsonar.projectKey=meu-bolso-api \
+                                            -Dsonar.projectName='Meu Bolso API' \
+                                            -Dsonar.sources=src \
+                                            -Dsonar.test.inclusions='src/**/*.{spec,test}.ts' \
+                                            -Dsonar.exclusions='**/node_modules/**,**/dist/**,**/coverage/**' \
+                                            -Dsonar.typescript.lcov.reportPaths=coverage/lcov.info \
+                                            -Dsonar.typescript.tsconfigPath=tsconfig.sonar.json
+                                    """
+                                    sh "docker rmi temp-sonar-backend:${BUILD_NUMBER}"
+                                }
                             }
                         }
                     }
                 }
-            }
-            stage('4.2 Frontend Sonar') {
-                steps {
-                    withSonarQubeEnv('SonarQube') {
-                        dir('meu-bolso-web') {
-                            script {
-                                // Mesma estratégia: Cria Dockerfile -> Build -> Run -> Limpa
-                                sh 'echo "FROM sonarsource/sonar-scanner-cli:latest" > Dockerfile.sonar'
-                                sh 'echo "COPY . /usr/src" >> Dockerfile.sonar'
-                                sh "docker build --platform linux/amd64 -f Dockerfile.sonar -t temp-sonar-frontend:${BUILD_NUMBER} ."
-                                sh """
-                                    docker run --rm \
-                                        --network infra_meu-bolso-ci \
-                                        -e SONAR_HOST_URL=\$SONAR_HOST_URL \
-                                        -e SONAR_TOKEN=\$SONAR_AUTH_TOKEN \
-                                        temp-sonar-frontend:${BUILD_NUMBER} \
-                                        -Dsonar.projectKey=meu-bolso-web \
-                                        -Dsonar.projectName='Meu Bolso Web' \
-                                        -Dsonar.sources=. \
-                                        -Dsonar.tests=. \
-                                        -Dsonar.exclusions='**/node_modules/**,**/dist/**,**/coverage/**' \
-                                        -Dsonar.test.inclusions='**/*.spec.ts,**/*.test.ts' \
-                                        -Dsonar.javascript.lcov.reportPaths=coverage/lcov.info \
-                                        -Dsonar.typescript.tsconfigPath=tsconfig.sonar.json
-                                """
-                                sh "docker rmi temp-sonar-frontend:${BUILD_NUMBER}"
+                stage('4.2 Frontend Sonar') {
+                    steps {
+                        withSonarQubeEnv('SonarQube') {
+                            dir('meu-bolso-web') {
+                                script {
+                                    sh 'echo "FROM sonarsource/sonar-scanner-cli:latest" > Dockerfile.sonar'
+                                    sh 'echo "COPY . /usr/src" >> Dockerfile.sonar'
+                                    sh "docker build --platform linux/amd64 -f Dockerfile.sonar -t temp-sonar-frontend:${BUILD_NUMBER} ."
+                                    
+                                    sh """
+                                        docker run --rm \
+                                            --network infra_meu-bolso-ci \
+                                            -e SONAR_HOST_URL=\$SONAR_HOST_URL \
+                                            -e SONAR_TOKEN=\$SONAR_AUTH_TOKEN \
+                                            -e NODE_OPTIONS="--max-old-space-size=4096" \
+                                            temp-sonar-frontend:${BUILD_NUMBER} \
+                                            -Dsonar.projectKey=meu-bolso-web \
+                                            -Dsonar.projectName='Meu Bolso Web' \
+                                            -Dsonar.sources=. \
+                                            -Dsonar.tests=. \
+                                            -Dsonar.exclusions='**/node_modules/**,**/dist/**,**/coverage/**' \
+                                            -Dsonar.test.inclusions='**/*.spec.ts,**/*.test.ts' \
+                                            -Dsonar.javascript.lcov.reportPaths=coverage/lcov.info \
+                                            -Dsonar.typescript.tsconfigPath=tsconfig.sonar.json
+                                    """
+                                    sh "docker rmi temp-sonar-frontend:${BUILD_NUMBER}"
+                                }
                             }
                         }
                     }
@@ -143,22 +144,14 @@ pipeline {
                 stage('6.1 Frontend Image') {
                     steps {
                         dir('meu-bolso-web') {
-                            sh """
-                              docker build \
-                                -t ${FRONTEND_IMAGE}:${IMAGE_TAG} \
-                                -t ${FRONTEND_IMAGE}:latest .
-                            """
+                            sh "docker build -t ${FRONTEND_IMAGE}:${IMAGE_TAG} -t ${FRONTEND_IMAGE}:latest ."
                         }
                     }
                 }
                 stage('6.2 Backend Image') {
                     steps {
                         dir('meu-bolso-api') {
-                            sh """
-                              docker build \
-                                -t ${BACKEND_IMAGE}:${IMAGE_TAG} \
-                                -t ${BACKEND_IMAGE}:latest .
-                            """
+                            sh "docker build -t ${BACKEND_IMAGE}:${IMAGE_TAG} -t ${BACKEND_IMAGE}:latest ."
                         }
                     }
                 }
@@ -167,31 +160,17 @@ pipeline {
 
         stage('7. Trivy Image Scan') {
             steps {
-                sh """
-                  trivy image ${BACKEND_IMAGE}:${IMAGE_TAG} \
-                    --exit-code 1 \
-                    --severity CRITICAL \
-                    --ignore-unfixed
-                """
-                sh """
-                  trivy image ${FRONTEND_IMAGE}:${IMAGE_TAG} \
-                    --exit-code 1 \
-                    --severity CRITICAL \
-                    --ignore-unfixed
-                """
+                sh "trivy image ${BACKEND_IMAGE}:${IMAGE_TAG} --exit-code 1 --severity CRITICAL --ignore-unfixed"
+                sh "trivy image ${FRONTEND_IMAGE}:${IMAGE_TAG} --exit-code 1 --severity CRITICAL --ignore-unfixed"
             }
         }
 
         stage('8. Push & Tag') {
             when {
                 expression {
-                    sh(
-                        script: 'git branch -r --contains HEAD | grep -q origin/main',
-                        returnStatus: true
-                    ) == 0
+                    sh(script: 'git branch -r --contains HEAD | grep -q origin/main', returnStatus: true) == 0
                 }
             }
-
             stages {
                 stage('8.1 Push Images') {
                     steps {
@@ -203,14 +182,9 @@ pipeline {
                         """
                     }
                 }
-
                 stage('8.2 Git Tag') {
                     steps {
-                        withCredentials([usernamePassword(
-                            credentialsId: 'github-credentials',
-                            usernameVariable: 'GIT_USER',
-                            passwordVariable: 'GIT_TOKEN'
-                        )]) {
+                        withCredentials([usernamePassword(credentialsId: 'github-credentials', usernameVariable: 'GIT_USER', passwordVariable: 'GIT_TOKEN')]) {
                             sh '''
                               git config user.email "jenkins@meubolso.dev"
                               git config user.name "Jenkins CI"
@@ -228,12 +202,6 @@ pipeline {
         always {
             sh 'docker image prune -f || true'
             cleanWs()
-        }
-        success {
-            echo "Pipeline concluído com sucesso"
-        }
-        failure {
-            echo "Pipeline falhou — verifique os logs"
         }
     }
 }
