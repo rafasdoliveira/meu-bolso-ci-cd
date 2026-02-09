@@ -62,9 +62,7 @@ pipeline {
         }
 
         stage('4. SonarQube Scan') {
-            withCredentials([
-                string(credentialsId: 'sonarqube', variable: 'SONAR_TOKEN')
-            ]) {
+            withSonarQubeEnv('SonarQube') {
                 parallel {
 
                 stage('4.1 Backend Sonar') {
@@ -72,8 +70,8 @@ pipeline {
                     sh '''
                         docker run --rm \
                         --network infra_meu-bolso-ci \
-                        -e SONAR_HOST_URL=http://meu-bolso-sonarqube:9000 \
-                        -e SONAR_TOKEN=$SONAR_TOKEN \
+                        -e SONAR_HOST_URL=$SONAR_HOST_URL \
+                        -e SONAR_TOKEN=$SONAR_AUTH_TOKEN \
                         -v "$PWD:/usr/src" \
                         -w /usr/src \
                         sonarsource/sonar-scanner-cli \
@@ -94,8 +92,8 @@ pipeline {
                     sh '''
                         docker run --rm \
                         --network infra_meu-bolso-ci \
-                        -e SONAR_HOST_URL=http://meu-bolso-sonarqube:9000 \
-                        -e SONAR_TOKEN=$SONAR_TOKEN \
+                        -e SONAR_HOST_URL=$SONAR_HOST_URL \
+                        -e SONAR_TOKEN=$SONAR_AUTH_TOKEN \
                         -v "$PWD:/usr/src" \
                         -w /usr/src \
                         sonarsource/sonar-scanner-cli \
