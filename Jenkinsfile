@@ -189,12 +189,12 @@ pipeline {
                             usernameVariable: 'GIT_USER',
                             passwordVariable: 'GIT_TOKEN'
                         )]) {
-                            sh """
+                            sh '''
                               git config user.email "jenkins@meubolso.dev"
                               git config user.name "Jenkins CI"
                               git tag -a ${IMAGE_TAG} -m "Release ${IMAGE_TAG}"
                               git push https://${GIT_USER}:${GIT_TOKEN}@github.com/${GIT_USER}/MeuBolsoCICD.git ${IMAGE_TAG}
-                            """
+                            '''
                         }
                     }
                 }
