@@ -62,7 +62,9 @@ pipeline {
         }
 
         stage('4. SonarQube Scan') {
-            withCredentials([string(credentialsId: 'sonar-token', variable: 'SONAR_TOKEN')]) {
+            withCredentials([
+                string(credentialsId: 'sonarqube', variable: 'SONAR_TOKEN')
+            ]) {
                 parallel {
 
                 stage('4.1 Backend Sonar') {
@@ -103,7 +105,8 @@ pipeline {
                         -Dsonar.tests=. \
                         -Dsonar.exclusions=**/node_modules/**,**/dist/**,**/coverage/** \
                         -Dsonar.test.inclusions=**/*.spec.ts,**/*.test.ts \
-                        -Dsonar.javascript.lcov.reportPaths=coverage/lcov.info
+                        -Dsonar.javascript.lcov.reportPaths=coverage/lcov.info \
+                        -Dsonar.typescript.tsconfigPath=tsconfig.sonar.json
                     '''
                     }
                 }
