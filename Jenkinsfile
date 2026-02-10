@@ -160,8 +160,18 @@ pipeline {
 
         stage('7. Trivy Image Scan') {
             steps {
-                sh "trivy image ${BACKEND_IMAGE}:${IMAGE_TAG} --exit-code 1 --severity CRITICAL --ignore-unfixed"
-                sh "trivy image ${FRONTEND_IMAGE}:${IMAGE_TAG} --exit-code 1 --severity CRITICAL --ignore-unfixed"
+                sh """
+                trivy image ${BACKEND_IMAGE}:${IMAGE_TAG} \
+                    --exit-code 1 \
+                    --severity HIGH,CRITICAL \
+                    --ignore-unfixed
+                """
+                sh """
+                trivy image ${FRONTEND_IMAGE}:${IMAGE_TAG} \
+                    --exit-code 1 \
+                    --severity HIGH,CRITICAL \
+                    --ignore-unfixed
+                """
             }
         }
 
