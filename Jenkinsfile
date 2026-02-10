@@ -141,18 +141,18 @@ pipeline {
 
         stage('6. Docker Build') {
             parallel {
-                stage('6.1 Frontend Image') {
-            //     steps {
-            //         dir('meu-bolso-web') {
-            //             sh """
-            //             docker build \
-            //                 --build-arg APP_VERSION=${IMAGE_TAG} \
-            //                 -t ${FRONTEND_IMAGE}:${IMAGE_TAG} \
-            //                 -t ${FRONTEND_IMAGE}:latest .
-            //             """
-            //         }
-            //     }
-            // }
+                // stage('6.1 Frontend Image') {
+                //     steps {
+                //         dir('meu-bolso-web') {
+                //             sh """
+                //             docker build \
+                //                 --build-arg APP_VERSION=${IMAGE_TAG} \
+                //                 -t ${FRONTEND_IMAGE}:${IMAGE_TAG} \
+                //                 -t ${FRONTEND_IMAGE}:latest .
+                //             """
+                //         }
+                //     }
+                // }
                 stage('6.1 Frontend Image') {
                     steps {
                         dir('meu-bolso-web') {
