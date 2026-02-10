@@ -1,0 +1,104 @@
+pipeline {
+    agent any
+
+    parameters {
+        string(
+            name: 'TAG',
+            description: 'Tag da versão vinda do Build principal (ex: v1.0.52)',
+            trim: true
+        )
+        choice(
+            name: 'ENVIRONMENT',
+            choices: ['DEV', 'STG', 'PROD'],
+            description: 'Ambiente de destino da promoção'
+        )
+    }
+
+    environment {
+        REGISTRY = 'localhost:5001'
+        BACKEND_IMAGE = "${REGISTRY}/meu-bolso-api"
+        FRONTEND_IMAGE = "${REGISTRY}/meu-bolso-web"
+    }
+
+    stages {
+        stage('1. Validar Parâmetros') {
+            steps {
+                script {
+                    if (!params.TAG?.trim()) {
+                        error "Parâmetro TAG é obrigatório."
+                    }
+
+                    // Regex ajustada para o seu padrão v1.0.X
+                    def tagPattern = ~/^v\d+\.\d+\.\d+$/
+                    if (!(params.TAG.trim() ==~ tagPattern)) {
+                        error "TAG '${params.TAG}' inválida. Use o formato v1.0.X"
+                    }
+
+                    echo "Solicitando promoção da versão ${params.TAG} para ${params.ENVIRONMENT}"
+                }
+            }
+        }
+
+        stage('2. Validar Cadeia de Promoção') {
+            steps {
+                script {
+                    def tag = params.TAG.trim()
+                    def env = params.ENVIRONMENT
+
+                    if (env == 'DEV') {
+                        echo "Verificando se as imagens originais existem..."
+                        def bExists = sh(script: "docker pull ${BACKEND_IMAGE}:${tag}", returnStatus: true)
+                        def fExists = sh(script: "docker pull ${FRONTEND_IMAGE}:${tag}", returnStatus: true)
+                        if (bExists != 0 || fExists != 0) error "Imagens base não encontradas no Registry."
+                    }
+
+                    if (env == 'STG') {
+                        echo "Verificando se já passou por DEV..."
+                        def bDev = sh(script: "docker pull ${BACKEND_IMAGE}:dev-${tag}", returnStatus: true)
+                        def fDev = sh(script: "docker pull ${FRONTEND_IMAGE}:dev-${tag}", returnStatus: true)
+                        if (bDev != 0 || fDev != 0) error "A versão ${tag} precisa ser promovida para DEV antes de STG."
+                    }
+
+                    if (env == 'PROD') {
+                        echo "Verificando se já passou por STG..."
+                        def bStg = sh(script: "docker pull ${BACKEND_IMAGE}:stg-${tag}", returnStatus: true)
+                        def fStg = sh(script: "docker pull ${FRONTEND_IMAGE}:stg-${tag}", returnStatus: true)
+                        if (bStg != 0 || fStg != 0) error "A versão ${tag} precisa ser promovida para STG antes de PROD."
+                    }
+                }
+            }
+        }
+
+        stage('3. Promover Imagens') {
+            steps {
+                script {
+                    def tag = params.TAG.trim()
+                    def envPrefix = params.ENVIRONMENT.toLowerCase()
+                    def newTag = "${envPrefix}-${tag}"
+                    
+                    def sourceTag = (params.ENVIRONMENT == 'DEV') ? tag : 
+                                    (params.ENVIRONMENT == 'STG') ? "dev-${tag}" : "stg-${tag}"
+
+                    echo "Promovendo: ${sourceTag} -> ${newTag}"
+
+                    // Tagueamento e Push
+                    sh "docker tag ${BACKEND_IMAGE}:${sourceTag} ${BACKEND_IMAGE}:${newTag}"
+                    sh "docker tag ${FRONTEND_IMAGE}:${sourceTag} ${FRONTEND_IMAGE}:${newTag}"
+                    
+                    sh "docker push ${BACKEND_IMAGE}:${newTag}"
+                    sh "docker push ${FRONTEND_IMAGE}:${newTag}"
+                    
+                    // Atualiza a tag 'latest' específica do ambiente
+                    sh "docker tag ${BACKEND_IMAGE}:${newTag} ${BACKEND_IMAGE}:${envPrefix}-latest"
+                    sh "docker push ${BACKEND_IMAGE}:${envPrefix}-latest"
+                }
+            }
+        }
+    }
+
+    post {
+        always {
+            sh 'docker image prune -f || true'
+        }
+    }
+}
